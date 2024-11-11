@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "195196949556",
+    "project_id": "despertateya-7002e",
+    "storage_bucket": "despertateya-7002e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:195196949556:android:1e63e2efefe2db466a6661",
+        "android_client_info": {
+          "package_name": "com.despertateya"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdkXbAVLhdrootz_v2ZpW0iq1CzEcUbb8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
