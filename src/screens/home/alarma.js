@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Modal, Button, Alert, PermissionsAndroid, Text, TextInput, Vibration, TouchableOpacity, Image, AppState, NativeModules, Linking, Platform, Animated, PanResponder, AppRegistry } from 'react-native';
+import { View, StyleSheet, Modal, Button, Alert, PermissionsAndroid, Text, TextInput, Vibration, TouchableOpacity, Image, AppState, NativeModules, KeyboardAvoidingView, Platform, Animated, PanResponder, AppRegistry, Keyboard } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker, Circle, Polyline } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -29,8 +29,9 @@ function AlarmaScreen({ route }) {
   const [modalPosition] = useState(new Animated.Value(0)); // Posición para el modal deslizable
   const [verdadero, setVerdadero] = useState();
   const [modalVisibleError, setModalVisibleError] = useState(false);
+  const [isFocused, setIsFocused] = useState(false); // Controla si el campo está enfocado
 
-
+console.log(isFocused);
   useEffect(() => {
     checkAndRequestLocationPermission();
   }, []);
@@ -143,8 +144,41 @@ function AlarmaScreen({ route }) {
   }, [selectedAddress, currentLocation]);
 
   const handleSelectAddress = async (data, details) => {
+
+  let filteredAddress = '';
+  const addressComponents = details.address_components;
+
+  let route = '';
+  let streetNumber = '';
+  let sublocality = '';
+
+  // Filtramos y asignamos cada componente a su respectiva variable
+  addressComponents.forEach((component) => {
+    if (component.types.includes('route')) {
+      route = component.short_name; // Nombre de la calle
+    }
+    if (component.types.includes('street_number')) {
+      streetNumber = component.long_name; // Número de la calle
+    }
+    if (component.types.includes('locality')) {
+      sublocality = component.long_name; // Localidad o barrio
+    }
+  });
+
+  // Construimos la dirección en el orden deseado
+  if (route) {
+    filteredAddress += route;
+  }
+  if (streetNumber) {
+    filteredAddress += ` ${streetNumber}`;
+  }
+  if (sublocality) {
+    filteredAddress += `, ${sublocality}`; // Agregar sublocalidad después de una coma
+  }
+
     const address = {
-      description: data.description,
+      
+      description: filteredAddress.trim(), // Asignamos la dirección filtrada
       latitude: details.geometry.location.lat,
       longitude: details.geometry.location.lng,
     };
@@ -363,6 +397,9 @@ function AlarmaScreen({ route }) {
         vibrationPattern: [4000, 50],
         importance: AndroidImportance.HIGH,
         ongoing: true,
+        pressAction: {
+          id: 'default', // Permite que la notificación abra la aplicación al hacer clic
+        },
         actions: [
           {
             title: 'Confirmar',
@@ -374,6 +411,9 @@ function AlarmaScreen({ route }) {
         ],
       },
       ios: {
+        pressAction: {
+          id: 'default', // Permite que la notificación abra la aplicación al hacer clic
+        },
         actions: [
           {
             title: 'Confirmar',
@@ -508,7 +548,9 @@ function AlarmaScreen({ route }) {
           indeterminate: false,
         },
         ongoing: true, // Notificación persistente
-
+        pressAction: {
+          id: 'default', // Permite que la notificación abra la aplicación al hacer clic
+        },
         actions: [
           {
             title: 'Pausar Alarma',
@@ -520,6 +562,9 @@ function AlarmaScreen({ route }) {
       },
       ios: {
         channelId,
+        pressAction: {
+          id: 'default', // Permite que la notificación abra la aplicación al hacer clic
+        },
         actions: [
           {
             title: 'Pausar Alarma',
@@ -593,7 +638,16 @@ function AlarmaScreen({ route }) {
     }
   };
 
+  const handlePress = () => {
+    Keyboard.dismiss(); // Ocultar el teclado
+    isAlarmActive ? handleStopAlarm() : activateAlarm();
+  };
+
   return (
+    <KeyboardAvoidingView
+    style={styles.container1}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // Ajusta el comportamiento para iOS y Android
+  >
     <View style={styles.container}>
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -628,8 +682,7 @@ function AlarmaScreen({ route }) {
               longitude: currentLocation?.longitude,
               latitudeDelta: 0.015,
               longitudeDelta: 0.0121,
-            }}
-          >
+            }}> 
             {currentLocation && ( 
               <Marker
                 coordinate={currentLocation}
@@ -638,6 +691,7 @@ function AlarmaScreen({ route }) {
                 style={{ width: 65, height: 65 }}
               />
             )}
+            
             {selectedAddress && (
               <>
                 <Marker
@@ -679,7 +733,8 @@ function AlarmaScreen({ route }) {
                 onChangeText: (text) => {
                   setDireccion(text)
                 },
-
+                onBlur: () => setIsFocused(false), // Cuando se pierde el foco
+                onFocus: () => setIsFocused(true),  // Cuando el campo recibe foco
               }}
               onPress={(data, details = null) => {
                 if (details) {
@@ -727,6 +782,9 @@ function AlarmaScreen({ route }) {
                   </TouchableOpacity>
                 ) : null
               }
+              enablePoweredByContainer={false}
+             listViewDisplayed={isFocused} // Mostrar la lista solo si el campo está enfocado
+
             />
             <View style={[styles.distanceInputContainer, { flexDirection: 'row', alignItems: 'center' }]}>
 
@@ -749,7 +807,7 @@ function AlarmaScreen({ route }) {
                 styles.button,
                 { backgroundColor: isAlarmActive ? '#D5004A' : '#223E6D' } // Color dinámico
               ]}
-              onPress={isAlarmActive ? handleStopAlarm : activateAlarm}
+              onPress={handlePress}
             >
               <Text style={styles.buttonText}>
                 {isAlarmActive ? "Desactivar Alarma" : "Activar Alarma"}
@@ -842,12 +900,17 @@ function AlarmaScreen({ route }) {
         </View>
       )}
     </View>
+  </KeyboardAvoidingView>
   );
 }
 
 export default AlarmaScreen;
 
 const styles = StyleSheet.create({
+  container1: {
+    flex: 1,
+
+  },
   container: {
     ...StyleSheet.absoluteFillObject,
     flex: 1,
@@ -859,7 +922,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'android' ? 50 : 70,
     width: '90%',
   },
   distanceInput: {
