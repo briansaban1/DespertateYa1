@@ -20,7 +20,10 @@
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:theme="@style/AppTheme">
-        
+    <service 
+    android:name="com.asterinet.react.bgactions.RNBackgroundActionsTask"
+     android:foregroundServiceType="shortService"/>
+
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyArvvnFtti11jh_qdmuVKQCIDet2UBuByc"/>
@@ -41,11 +44,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             
-            <intent-filter>
+            <intent-filter android:label="filter_react_native">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.comunidad" android:host="Alarma" />
+                <data android:scheme="com.despertateya" android:host="Alarma" />
             </intent-filter>
             
         </activity>

@@ -6,6 +6,7 @@
 #import "RNNotifications.h"
 #import "React/RCTBridgeModule.h"
 #import "RNNotifications.h"
+#import <AVFoundation/AVFoundation.h>
 
 #import <React/RCTBundleURLProvider.h>
 
@@ -13,15 +14,26 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+
+  NSError *error = nil;
+  [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback
+                                        withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                                            error:&error];
+  if (error) {
+    NSLog(@"Error configuring AVAudioSession: %@", error);
+  }
+
+  [[AVAudioSession sharedInstance] setActive:YES error:nil];
+
     [RNNotifications startMonitorNotifications]; // -> Add this line
-  [GMSServices provideAPIKey:@"AIzaSyArvvnFtti11jh_qdmuVKQCIDet2UBuByc"]; // add this line using the api key obtained from Google Console
+    [GMSServices provideAPIKey:@"AIzaSyArvvnFtti11jh_qdmuVKQCIDet2UBuByc"]; // add this line using the api key obtained from Google Console
     [FIRApp configure];
+
 
   self.moduleName = @"DespertateYa";
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
-
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 

@@ -11,9 +11,6 @@ let notificationDisplayed = true;
 const displayNotification = async (title, body) => {
     console.log(title, 'titulo1')
     try{
-
-
-
         await notifee.requestPermission()
         const channelId = await notifee.createChannel({
             id: 'default',
@@ -72,7 +69,6 @@ AppRegistry.registerComponent(appName, () => App);
 
 
 notifee.onForegroundEvent(async ({type, detail})=>{
-    console.log(type, 'tipoooo')
     switch(type){
         case EventType.DISMISSED:
             console.log('User dismissed notification', detail.notification);

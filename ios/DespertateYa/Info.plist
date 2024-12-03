@@ -24,10 +24,21 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.despertateya</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>MinimumOSVersion</key>
+	<string>13.4</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -35,20 +46,18 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Esta aplicación necesita acceso a tu ubicación, incluso en segundo plano para obtener y monitorear tu posición constantemente.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-<string>Esta aplicación necesita acceso a tu ubicación todo el tiempo para funcionar correctamente.</string>
-<key>NSLocationWhenInUseUsageDescription</key>
-<string>Esta aplicación necesita acceso a tu ubicación mientras esté en uso.</string>
-<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>Esta aplicación necesita acceso a tu ubicación incluso en segundo plano para monitorear tu posición constantemente.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>We need tracking to provide personalized ads.</string>
-	<key>UIBackgroundModes</key>
+	<string>Esta aplicación necesita acceso a tu ubicación todo el tiempo para monitorear tu posición constantemente.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+<string>Esta aplicación necesita acceso a tu ubicación mientras esté en uso para proporcionarte funciones personalizadas entre tu posición en tiempo real y la ubicación delimitada. Por ejemplo, utilizaremos tu ubicación para calcular la distancia desde tu punto actual hasta el lugar establecido.</string>	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
 		<string>processing</string>
 		<string>remote-notification</string>
 		<string>fetch</string>
+		<string>audio</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -56,6 +65,8 @@
 	<array>
 		<string>arm64</string>
 	</array>
+	<key>UIStatusBarStyle</key>
+	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

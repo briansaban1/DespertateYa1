@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Platform, StyleSheet, UIManager, Text, TextInput, View, StatusBar, LogBox, SafeAreaView, PermissionsAndroid, Vibration, Linking, Alert } from 'react-native';
+import { Platform, StyleSheet, UIManager, Text, TextInput, View, StatusBar, LogBox, SafeAreaView, PermissionsAndroid, Vibration, Linking, Alert, AppState, BackHandler } from 'react-native';
 import AppMain from './src/App';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from './src/constants';
+import Geolocation from '@react-native-community/geolocation';
+
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import NavigationService from './src/navigation/RootNavigation';
@@ -28,11 +30,35 @@ function App() {
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const navigationRef = useRef();
   const [deeplinkUrl, setDeeplinkUrl] = useState(null);
+  const [watchId, setWatchId] = useState(null);
+  const [appState, setAppState] = useState(AppState.currentState);
+  const [estado, setEstado] = useState(false);
 
 
   useEffect(() => {
     requestPermissions();
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios' && estado) {
+      const handleAppStateChange = (nextAppState) => {
+        if (appState.match(/inactive|background/) && nextAppState === 'active') {
+          // La app ha vuelto del segundo plano, solicita el permiso de nuevo
+          requestPermissions();
+        }
+        setAppState(nextAppState);
+      };
+
+      const appStateListener = AppState.addEventListener('change', handleAppStateChange);
+
+      // Limpieza: eliminar el listener cuando el componente se desmonte
+      return () => {
+        appStateListener.remove();
+        setEstado(false);
+
+      };
+    }
+  }, [appState]);
 
   async function requestPermissions() {
     let missingPermissions = [];
@@ -44,11 +70,11 @@ function App() {
       const notificationGranted = await requestNotificationPermission();
       if (!notificationGranted) missingPermissions.push('notificaciones');
     } else {
-      const locationGranted = await requestLocationPermissionIOS();
+      //const userPermissionGranted = 
+      await requestUserPermission();
+      //if (!userPermissionGranted) missingPermissions.push('notificaciones');
+      //await requestLocationPermissionIOS();
       //if (!locationGranted) missingPermissions.push('ubicación');
-
-      const userPermissionGranted = await requestUserPermission();
-      if (!userPermissionGranted) missingPermissions.push('notificaciones');
     }
 
     if (missingPermissions.length === 0) {
@@ -58,103 +84,183 @@ function App() {
       inAppMessaging();
     } else {
       Alert.alert(
-        'Permisos faltantes',
-        `Faltan los siguientes permisos: ${missingPermissions.join(', ')}. ¿Deseas volver a intentarlo?`,
+        'Se requieren algunos Permisos',
+        `Faltan los siguientes permisos: ${missingPermissions.map(permission => permission.toUpperCase()).join(', ')}. ¿Deseás volver a intentarlo?`,
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Reintentar', onPress: requestPermissions }
+          {
+            text: 'Reintentar', onPress: () => {
+              if (Platform.OS === 'android') {
+                requestLocationPermissionAndroid();
+                requestNotificationPermission();
+              } else {
+                requestUserPermission();
+                requestLocationPermissionIOS();
+              }
+            }
+          }
         ]
       );
       console.warn("No se concedieron todos los permisos.");
     }
-    }
-  
+  }
 
-    // Solicitar permisos de ubicación en Android
-    async function requestLocationPermissionAndroid() {
-      try {
-        const fineLocationGranted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: "Permiso de ubicación",
-            message: "Esta aplicación necesita acceder a tu ubicación todo el tiempo para funcionar correctamente.",
-            buttonNeutral: "Preguntar después",
-            buttonNegative: "Cancelar",
-            buttonPositive: "Permitir",
-          }
-        );
-  
-        if (fineLocationGranted === PermissionsAndroid.RESULTS.GRANTED) {
-          if (Platform.Version >= 29) {
-            const backgroundLocationGranted = await PermissionsAndroid.request(
-              PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
-              {
-                title: "Permiso de ubicación en segundo plano",
-                message: "Esta aplicación necesita acceso a tu ubicación incluso en segundo plano para monitorear tu posición constantemente.",
-                buttonNeutral: "Preguntar después",
-                buttonNegative: "Cancelar",
-                buttonPositive: "Permitir",
-              }
-            );
-  
-            if (backgroundLocationGranted !== PermissionsAndroid.RESULTS.GRANTED) {
-              Alert.alert("Permiso denegado", "La aplicación no funcionará correctamente sin el permiso de ubicación en segundo plano.");
-              return false;
-            }
-          }
-          return true;
-        } else {
-          Alert.alert("Permiso denegado", "La aplicación necesita permisos de ubicación para funcionar.");
-          return false;
+
+  // Solicitar permisos de ubicación en Android
+  async function requestLocationPermissionAndroid() {
+    try {
+      const fineLocationGranted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: "Permiso de ubicación",
+          message: "Esta aplicación necesita acceder a tu ubicación todo el tiempo para funcionar correctamente.",
+          buttonNeutral: "Preguntar después",
+          buttonNegative: "Cancelar",
+          buttonPositive: "Permitir",
         }
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
+      );
 
-    // Solicitar permisos de ubicación en iOS
-  async function requestLocationPermissionIOS() {
-    const locationPermission = PERMISSIONS.IOS.LOCATION_ALWAYS;
+      if (fineLocationGranted === PermissionsAndroid.RESULTS.GRANTED) {
+        if (Platform.Version >= 29) {
+          const backgroundLocationGranted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+            {
+              title: "Permiso de ubicación en segundo plano",
+              message: "Esta aplicación necesita acceso a tu ubicación incluso en segundo plano para monitorear tu posición constantemente.",
+              buttonNeutral: "Preguntar después",
+              buttonNegative: "Cancelar",
+              buttonPositive: "Permitir",
+            }
+          );
 
-    const result = await check(locationPermission);
-    if (result === RESULTS.GRANTED) {
-      console.log('Permiso de ubicación ya otorgado.');
-      return true;
-    } else {
-      const requestResult = await request(locationPermission);
-
-      if (requestResult === RESULTS.GRANTED) {
-        console.log('Permiso de ubicación concedido.');
-        startTrackingLocation();
-
+          if (backgroundLocationGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert("Permiso denegado", "La aplicación no funcionará correctamente sin el permiso de ubicación en segundo plano.");
+            return false;
+          }
+        }
         return true;
       } else {
         Alert.alert("Permiso denegado", "La aplicación necesita permisos de ubicación para funcionar.");
         return false;
       }
+    } catch (err) {
+      console.warn(err);
+      return false;
     }
   }
 
+  async function requestLocationPermissionIOS() {
+    // Solicitar permiso para "Cuando la app está en uso" primero
+
+    try {
+      const whenInUsePermission = PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
+      const alwaysPermission = PERMISSIONS.IOS.LOCATION_ALWAYS;
+
+      // Primero verifica si ya tenemos el permiso "Siempre"
+      let result = await check(alwaysPermission);
+
+      if (result === RESULTS.GRANTED) {
+        console.log('Permiso de ubicación "Siempre" ya otorgado.');
+        return true;
+      } else {
+
+      // Si no tenemos "Siempre", verificar y solicitar "Cuando la app está en uso"
+      result = await check(whenInUsePermission);
+
+      if (result === RESULTS.GRANTED) {
+        console.log('Permiso de ubicación "Cuando la app está en uso" ya otorgado.');
+      } else {
+        // Solicitar "Cuando la app está en uso" si no está otorgado
+        const requestResult = await request(whenInUsePermission);
+        if (requestResult !== RESULTS.GRANTED) {
+          Alert.alert("Permiso denegado App", "La aplicación necesita permisos de ubicación para funcionar.",
+            [
+              { text: "Abrir Configuración", onPress: () => { Linking.openSettings(); setEstado(true); } },
+              { text: "Cancelar", style: "cancel", onPress: () => {BackHandler.exitApp()}  }
+            ]
+          );
+          return false;
+        }
+      }
+
+      // Ahora, intenta solicitar "Siempre" si es necesario
+      const requestAlwaysResult = await request(alwaysPermission);
+
+      if (requestAlwaysResult === RESULTS.GRANTED) {
+        console.log('Permiso de ubicación "Siempre" concedido.');
+        startTrackingLocation();
+        return true;
+      } else {
+        Alert.alert(
+          "Permiso de Ubicación App",
+          "Es indespensable para monitorear tu ubicación en segundo plano, habilitar el permiso de ubicación \"Siempre\" en el panel de Configuración.",
+          [
+            { text: "Abrir Configuración", onPress: () => { Linking.openSettings(); setEstado(true); } },
+            { text: "Cancelar", style: "cancel", onPress: () => {BackHandler.exitApp()}  }
+          ]
+        );
+        return false;
+      };
+    };
+    } catch (error) {
+      console.error('Error al solicitar permisos de ubicación en IOS: ', error);
+      return false;
+    };
+  };
+
   // Función para iniciar la obtención de ubicación
-function startTrackingLocation() {
-  Geolocation.watchPosition(
-    (position) => {
-      console.log('Ubicación actualizada:', position);
-    },
-    (error) => {
-      console.error('Error al obtener la ubicación:', error);
-      Alert.alert('Error', 'No se pudo obtener la ubicación en segundo plano.');
-    },
-    {
-      enableHighAccuracy: true,
-      distanceFilter: 10,  // Se obtendrá una actualización cada 10 metros
-      interval: 5000,  // 10 segundos
-      fastestInterval: 5000,  // 5 segundos como intervalo más rápido
-      showsBackgroundLocationIndicator: true, // Para iOS, muestra un indicador si está en segundo plano
-    }
-  );
-}
+  function startTrackingLocation() {
+    Geolocation.getCurrentPosition(
+
+      position => {
+        console.log('ok1')
+        const { latitude, longitude } = position.coords;
+        console.log({ latitude, longitude });
+        setCurrentLocation({ latitude, longitude });
+        setLoading(false); // Detener el loading una vez que se obtiene la ubicación
+
+      },
+      error => {
+        console.error(error);
+        setLoading(false);
+        setError('Error al obtener la ubicación');
+      },
+      {
+        enableHighAccuracy: true,
+        interval: 1000, // Cada 1 segundo
+        fastestInterval: 1000, // Actualización más frecuente
+      }
+    );
+    const watchId = Geolocation.watchPosition(
+
+      position => {
+        const { latitude, longitude } = position.coords;
+        console.log({ latitude, longitude });
+
+        // Verifica si las coordenadas han cambiado antes de actualizar el estado
+        if (!currentLocation ||
+          latitude !== currentLocation.latitude ||
+          longitude !== currentLocation.longitude
+        ) {
+          setCurrentLocation({ latitude, longitude });
+          setLoading(false); // Detener el loading una vez que se obtiene la ubicación
+        }
+      },
+      error => {
+        console.error(error);
+        setLoading(false);
+        setError('Error al obtener la ubicación');
+      },
+      {
+        enableHighAccuracy: true,
+        interval: 1000, // Cada 1 segundo
+        fastestInterval: 1000, // Actualización más frecuente
+      }
+    );
+
+    // Guardar el watchId para poder detenerlo después si es necesario
+    setWatchId(watchId);
+  }
 
   async function requestNotificationPermission() {
     try {
@@ -268,20 +374,28 @@ function startTrackingLocation() {
     }, {}) : {};
   };
 
+
   useEffect(() => {
+    const handleDeepLink = (event) => {
+      const url = event.url;
+      console.log(`Deep link recibido: ${url}`);
+      // Lógica para manejar el enlace profundo
+    };
 
-    const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
-    // Check if app was opened from a deep link
-    console.log(linkingSubscription, 'linkingSubscription');
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink({ url });
+    const initializeLinking = async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl) {
+          handleDeepLink({ url: initialUrl });
+          console.log(initialUrl, 'initialUrl')
+        }
+      } catch (error) {
+        console.error("Error al obtener la URL inicial:", error);
       }
-    });
+    };
 
-    if (deeplinkUrl) {
-      //handleDeepLink(deeplinkUrl);
-    }
+    const linkingSubscription = Linking.addListener('url', handleDeepLink);
+    initializeLinking();
 
     return () => {
       linkingSubscription.remove();

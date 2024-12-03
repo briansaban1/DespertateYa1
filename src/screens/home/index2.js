@@ -135,14 +135,22 @@ function HomeScreen1() {
   
 
   useEffect(() => {
-    requestLocationPermission().then((hasPermission) => {
-      if (hasPermission) {
-        fetchLocation();
-      } else {
+    const checkLocationPermission = async () => {
+      try {
+        const hasPermission = await requestLocationPermission();
+        if (hasPermission) {
+          fetchLocation();
+        } else {
+          setLoading(false);
+          setError('Location permission denied');
+        }
+      } catch (err) {
         setLoading(false);
-        setError('Location permission denied');
+        setError(`Error checking location permission: ${err.message}`);
       }
-    });
+    };
+    checkLocationPermission();
+ 
 
     const degreeUpdateRate = 0;
 
